@@ -561,11 +561,6 @@ body {
 
 .story-text p {
     margin-bottom: 1.5rem;
-    text-indent: 2rem;
-}
-
-.story-text p:first-of-type {
-    text-indent: 0;
 }
 
 .story-text p:first-of-type::first-letter {
