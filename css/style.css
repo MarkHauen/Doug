@@ -516,6 +516,23 @@ body {
     font-style: italic;
 }
 
+.footer-link {
+    margin-top: 1rem;
+}
+
+.footer-link a {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--neon-cyan);
+    text-decoration: none;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+}
+
+.footer-link a:hover {
+    text-shadow: 0 0 10px var(--neon-cyan);
+}
+
 /* ===== CHAPTER PAGE STYLES ===== */
 .chapter-page {
     min-height: 100vh;
