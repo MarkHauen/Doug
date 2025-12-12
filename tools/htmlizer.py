@@ -1,35 +1,46 @@
 #!/usr/bin/env python3
 """
-DOUG Story HTMLizer
-Converts .txt chapter files to styled HTML pages for the Doug website.
+DOUG Story HTMLizer v2
+Converts full.txt to styled HTML chapter pages for the Doug website.
 
 Usage:
-    python htmlizer.py                    # Process all chapters
-    python htmlizer.py --chapter 1        # Process specific chapter
-    python htmlizer.py --update-index     # Also regenerate index.html nav
+    python htmlizer.py                    # Process all chapters from full.txt
+    python htmlizer.py --chapter 1        # Process specific chapter only
 """
 
-import os
 import re
-import glob
 import argparse
 from pathlib import Path
 
 # Configuration
-CHAPTERS_DIR = Path(__file__).parent.parent / "chapters"
-INDEX_FILE = Path(__file__).parent.parent / "index.html"
+BASE_DIR = Path(__file__).parent.parent
+CHAPTERS_DIR = BASE_DIR / "chapters"
+FULL_TXT = CHAPTERS_DIR / "full.txt"
+INDEX_FILE = BASE_DIR / "index.html"
 
 # Chapter metadata - add new chapters here
 CHAPTER_META = {
     1: {"title": "The Arrival", "description": "Doug's mundane morning commute takes an unexpected turn into the depths of Hell Inc."},
     2: {"title": "The Situation", "description": "A bureaucratic nightmare unfolds as Hell's HR department discovers a critical filing error."},
     3: {"title": "The Meeting", "description": "Floor managers convene as Doug awaits his fate."},
-    4: {"title": "TBD", "description": "The story continues..."},
+    4: {"title": "The Letter", "description": "Doug settles into his temporary accommodations."},
     5: {"title": "TBD", "description": "The story continues..."},
+    6: {"title": "TBD", "description": "The story continues..."},
 }
 
-# Scene break marker - a blank line in the txt will become this
+# Special tag replacements
 SCENE_BREAK_HTML = '<div class="scene-break">◆ ◆ ◆</div>'
+
+GNOTE_HTML = '''<div class="gnote-container">
+    <div class="gnote">
+        <div class="gnote-border"></div>
+        <div class="gnote-inner">
+            <div class="gnote-left">Love,</div>
+            <div class="gnote-right">G</div>
+        </div>
+        <div class="gnote-shimmer"></div>
+    </div>
+</div>'''
 
 
 def get_chapter_html_template(chapter_num: int, title: str, content_html: str, total_chapters: int) -> str:
@@ -72,7 +83,7 @@ def get_chapter_html_template(chapter_num: int, title: str, content_html: str, t
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chapter {chapter_num}: {title} | DOUG</title>
     <link rel="stylesheet" href="../css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;700&family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="scanlines"></div>
@@ -116,69 +127,94 @@ def get_chapter_html_template(chapter_num: int, title: str, content_html: str, t
 '''
 
 
-def txt_to_html_content(txt_content: str) -> str:
-    """Convert plain text to HTML paragraphs with scene breaks."""
+def process_line(line: str) -> str | None:
+    """Process a single line and return HTML or None if it's a chapter marker."""
+    line = line.strip()
     
-    # Split into paragraphs (double newline or single newline with blank line)
-    paragraphs = re.split(r'\n\s*\n', txt_content.strip())
+    if not line:
+        return None
     
-    html_parts = []
-    for para in paragraphs:
-        para = para.strip()
-        if not para:
+    # Check for chapter marker - return None to signal chapter break
+    if re.match(r'^<Chapter\s+\d+>$', line, re.IGNORECASE):
+        return None
+    
+    # Check for section break
+    if line == '<SECTION BREAK>':
+        return f'                {SCENE_BREAK_HTML}'
+    
+    # Check for GNOTE
+    if line == '<GNOTE>':
+        # Indent each line of the GNOTE HTML
+        gnote_lines = GNOTE_HTML.strip().split('\n')
+        indented = '\n'.join('                ' + l for l in gnote_lines)
+        return indented
+    
+    # Regular paragraph - escape HTML entities
+    line = line.replace('&', '&amp;')
+    line = line.replace('<', '&lt;')
+    line = line.replace('>', '&gt;')
+    # Convert smart quotes to regular quotes
+    line = line.replace('"', '"').replace('"', '"')
+    line = line.replace(''', "'").replace(''', "'")
+    
+    return f'                <p>{line}</p>'
+
+
+def parse_full_txt() -> dict[int, list[str]]:
+    """Parse full.txt and return dict of chapter_num -> list of lines."""
+    
+    if not FULL_TXT.exists():
+        raise FileNotFoundError(f"Could not find {FULL_TXT}")
+    
+    with open(FULL_TXT, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Split by chapter markers
+    chapters = {}
+    current_chapter = 0
+    current_lines = []
+    
+    for line in content.split('\n'):
+        line = line.strip()
+        if not line:
             continue
-        
-        # Check if this is a scene break marker (just whitespace/dashes/asterisks)
-        if re.match(r'^[\s\-\*~_=◆•]+$', para) or para in ['---', '***', '===', '* * *']:
-            html_parts.append(f'                {SCENE_BREAK_HTML}')
-        else:
-            # Escape HTML entities
-            para = para.replace('&', '&amp;')
-            para = para.replace('<', '&lt;')
-            para = para.replace('>', '&gt;')
-            # Convert quotes for better typography
-            para = para.replace('"', '"').replace('"', '"')
-            para = para.replace(''', "'").replace(''', "'")
             
-            html_parts.append(f'                <p>{para}</p>')
-    
-    return '\n\n'.join(html_parts)
-
-
-def find_txt_chapters() -> list[int]:
-    """Find all numbered .txt files in the chapters directory."""
-    txt_files = glob.glob(str(CHAPTERS_DIR / "*.txt"))
-    chapter_nums = []
-    
-    for txt_file in txt_files:
-        filename = os.path.basename(txt_file)
-        match = re.match(r'^(\d+)\.txt$', filename)
+        # Check for chapter marker
+        match = re.match(r'^<Chapter\s+(\d+)>$', line, re.IGNORECASE)
         if match:
-            chapter_nums.append(int(match.group(1)))
+            # Save previous chapter if exists
+            if current_chapter > 0 and current_lines:
+                chapters[current_chapter] = current_lines
+            
+            current_chapter = int(match.group(1))
+            current_lines = []
+        else:
+            current_lines.append(line)
     
-    return sorted(chapter_nums)
+    # Don't forget the last chapter
+    if current_chapter > 0 and current_lines:
+        chapters[current_chapter] = current_lines
+    
+    return chapters
 
 
-def process_chapter(chapter_num: int, total_chapters: int) -> bool:
-    """Process a single chapter txt file into HTML."""
+def process_chapter(chapter_num: int, lines: list[str], total_chapters: int) -> bool:
+    """Process a single chapter into HTML."""
     
-    txt_path = CHAPTERS_DIR / f"{chapter_num}.txt"
     html_path = CHAPTERS_DIR / f"chapter{chapter_num}.html"
-    
-    if not txt_path.exists():
-        print(f"  ✗ Chapter {chapter_num}: {txt_path} not found")
-        return False
-    
-    # Read txt content
-    with open(txt_path, 'r', encoding='utf-8') as f:
-        txt_content = f.read()
     
     # Get chapter metadata
     meta = CHAPTER_META.get(chapter_num, {"title": f"Chapter {chapter_num}", "description": "..."})
     title = meta["title"]
     
-    # Convert to HTML
-    content_html = txt_to_html_content(txt_content)
+    # Convert lines to HTML
+    html_parts = []
+    for line in lines:
+        processed = process_line(line)
+        if processed:
+            html_parts.append(processed)
+    
+    content_html = '\n\n'.join(html_parts)
     full_html = get_chapter_html_template(chapter_num, title, content_html, total_chapters)
     
     # Write HTML file
@@ -264,35 +300,38 @@ def update_index_nav(chapter_nums: list[int]):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Convert Doug story .txt files to HTML')
+    parser = argparse.ArgumentParser(description='Convert Doug story full.txt to HTML chapters')
     parser.add_argument('--chapter', '-c', type=int, help='Process only this chapter number')
-    parser.add_argument('--update-index', '-i', action='store_true', help='Also update index.html navigation')
     args = parser.parse_args()
     
-    print("\n🔥 DOUG HTMLizer - Converting stories to hellish HTML\n")
+    print("\n🔥 DOUG HTMLizer v2 - Converting stories to hellish HTML\n")
     
-    # Find all chapter txt files
-    chapter_nums = find_txt_chapters()
-    
-    if not chapter_nums:
-        print("  ✗ No chapter .txt files found in chapters/ directory")
-        print("    Expected files like: 1.txt, 2.txt, 3.txt, etc.")
+    try:
+        chapters = parse_full_txt()
+    except FileNotFoundError as e:
+        print(f"  ✗ {e}")
         return 1
     
+    if not chapters:
+        print("  ✗ No chapters found in full.txt")
+        print("    Expected format: <Chapter 1> followed by paragraph lines")
+        return 1
+    
+    chapter_nums = sorted(chapters.keys())
     print(f"  Found {len(chapter_nums)} chapter(s): {', '.join(map(str, chapter_nums))}\n")
     
     # Process chapters
     if args.chapter:
-        if args.chapter not in chapter_nums:
-            print(f"  ✗ Chapter {args.chapter} not found")
+        if args.chapter not in chapters:
+            print(f"  ✗ Chapter {args.chapter} not found in full.txt")
             return 1
-        process_chapter(args.chapter, len(chapter_nums))
+        process_chapter(args.chapter, chapters[args.chapter], len(chapter_nums))
     else:
         for num in chapter_nums:
-            process_chapter(num, len(chapter_nums))
+            process_chapter(num, chapters[num], len(chapter_nums))
     
-    # Update index if requested or processing all
-    if args.update_index or not args.chapter:
+    # Update index
+    if not args.chapter:
         print()
         update_index_nav(chapter_nums)
     
