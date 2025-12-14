@@ -22,8 +22,8 @@ INDEX_FILE = BASE_DIR / "index.html"
 CHAPTER_META = {
     1: {"title": "The Arrival", "description": "Doug's mundane morning commute takes an unexpected turn into the depths of Hell Inc."},
     2: {"title": "The Situation", "description": "A bureaucratic nightmare unfolds as Hell's HR department discovers a critical filing error."},
-    3: {"title": "The Meeting", "description": "Floor managers convene as Doug awaits his fate."},
-    4: {"title": "The Letter", "description": "Doug settles into his temporary accommodations."},
+    3: {"title": "The Confrence Call", "description": "Floor managers convene as Doug awaits his fate."},
+    4: {"title": "The First Meeting", "description": "Doug settles into his temporary accommodations, and has a one-on-one with his new boss."},
     5: {"title": "TBD", "description": "The story continues..."},
     6: {"title": "TBD", "description": "The story continues..."},
 }
@@ -198,14 +198,35 @@ def parse_full_txt() -> dict[int, list[str]]:
     return chapters
 
 
-def process_chapter(chapter_num: int, lines: list[str], total_chapters: int) -> bool:
-    """Process a single chapter into HTML."""
+def count_words(lines: list[str]) -> int:
+    """Count words in chapter content (excluding special tags)."""
+    word_count = 0
+    for line in lines:
+        line = line.strip()
+        # Skip special tags
+        if not line or line.startswith('<'):
+            continue
+        word_count += len(line.split())
+    return word_count
+
+
+def estimate_read_time(word_count: int, wpm: int = 200) -> str:
+    """Estimate reading time based on word count. Average reading speed is ~200-250 wpm."""
+    minutes = max(1, round(word_count / wpm))
+    return f"~{minutes} min read"
+
+
+def process_chapter(chapter_num: int, lines: list[str], total_chapters: int) -> int:
+    """Process a single chapter into HTML. Returns word count."""
     
     html_path = CHAPTERS_DIR / f"chapter{chapter_num}.html"
     
     # Get chapter metadata
     meta = CHAPTER_META.get(chapter_num, {"title": f"Chapter {chapter_num}", "description": "..."})
     title = meta["title"]
+    
+    # Count words for read time estimate
+    word_count = count_words(lines)
     
     # Convert lines to HTML
     html_parts = []
@@ -221,11 +242,12 @@ def process_chapter(chapter_num: int, lines: list[str], total_chapters: int) -> 
     with open(html_path, 'w', encoding='utf-8') as f:
         f.write(full_html)
     
-    print(f"  ✓ Chapter {chapter_num}: {title} → {html_path.name}")
-    return True
+    read_time = estimate_read_time(word_count)
+    print(f"  ✓ Chapter {chapter_num}: {title} ({word_count} words, {read_time}) → {html_path.name}")
+    return word_count
 
 
-def update_index_nav(chapter_nums: list[int]):
+def update_index_nav(chapter_nums: list[int], word_counts: dict[int, int]):
     """Update the index.html navigation and chapter cards."""
     
     if not INDEX_FILE.exists():
@@ -251,13 +273,14 @@ def update_index_nav(chapter_nums: list[int]):
     cards_html = []
     for num in chapter_nums:
         meta = CHAPTER_META.get(num, {"title": f"Chapter {num}", "description": "..."})
+        read_time = estimate_read_time(word_counts.get(num, 0))
         cards_html.append(f'''<a href="chapters/chapter{num}.html" class="chapter-card">
                 <div class="chapter-number">{num:02d}</div>
                 <div class="chapter-info">
                     <h3>{meta["title"]}</h3>
                     <p>{meta["description"]}</p>
                     <div class="chapter-meta">
-                        <span class="read-time">~10 min read</span>
+                        <span class="read-time">{read_time}</span>
                         <span class="chapter-status online">ACCESSIBLE</span>
                     </div>
                 </div>
@@ -320,20 +343,21 @@ def main():
     chapter_nums = sorted(chapters.keys())
     print(f"  Found {len(chapter_nums)} chapter(s): {', '.join(map(str, chapter_nums))}\n")
     
-    # Process chapters
+    # Process chapters and collect word counts
+    word_counts = {}
     if args.chapter:
         if args.chapter not in chapters:
             print(f"  ✗ Chapter {args.chapter} not found in full.txt")
             return 1
-        process_chapter(args.chapter, chapters[args.chapter], len(chapter_nums))
+        word_counts[args.chapter] = process_chapter(args.chapter, chapters[args.chapter], len(chapter_nums))
     else:
         for num in chapter_nums:
-            process_chapter(num, chapters[num], len(chapter_nums))
+            word_counts[num] = process_chapter(num, chapters[num], len(chapter_nums))
     
     # Update index
     if not args.chapter:
         print()
-        update_index_nav(chapter_nums)
+        update_index_nav(chapter_nums, word_counts)
     
     print("\n✨ Done! Your souls are ready for deployment.\n")
     return 0
