@@ -127,6 +127,10 @@ def get_chapter_html_template(chapter_num: int, title: str, content_html: str, t
 '''
 
 
+# Allowed inline HTML tags that should be preserved
+ALLOWED_INLINE_TAGS = ['strong', 'em', 'b', 'i', 'u', 'mark', 'small', 'sub', 'sup']
+
+
 def process_line(line: str) -> str | None:
     """Process a single line and return HTML or None if it's a chapter marker."""
     line = line.strip()
@@ -149,10 +153,28 @@ def process_line(line: str) -> str | None:
         indented = '\n'.join('                ' + l for l in gnote_lines)
         return indented
     
-    # Regular paragraph - escape HTML entities
+    # Preserve allowed inline HTML tags by temporarily replacing them
+    placeholders = {}
+    placeholder_count = 0
+    
+    for tag in ALLOWED_INLINE_TAGS:
+        # Match opening and closing tags
+        for pattern in [f'<{tag}>', f'</{tag}>']:
+            while pattern in line:
+                placeholder = f'__PLACEHOLDER_{placeholder_count}__'
+                placeholders[placeholder] = pattern
+                line = line.replace(pattern, placeholder, 1)
+                placeholder_count += 1
+    
+    # Escape HTML entities
     line = line.replace('&', '&amp;')
     line = line.replace('<', '&lt;')
     line = line.replace('>', '&gt;')
+    
+    # Restore allowed tags
+    for placeholder, original in placeholders.items():
+        line = line.replace(placeholder, original)
+    
     # Convert smart quotes to regular quotes
     line = line.replace('"', '"').replace('"', '"')
     line = line.replace(''', "'").replace(''', "'")
