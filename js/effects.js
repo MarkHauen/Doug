@@ -99,6 +99,47 @@ function initStatusFlicker() {
 // Initialize status flicker
 initStatusFlicker();
 
+// Hamburger menu functionality
+function initNavMenu() {
+    const navToggle = document.querySelector('.nav-toggle');
+    const navMenu = document.querySelector('.nav-menu');
+    const navOverlay = document.querySelector('.nav-overlay');
+    
+    if (!navToggle || !navMenu) return;
+    
+    function toggleMenu() {
+        navToggle.classList.toggle('active');
+        navMenu.classList.toggle('active');
+        if (navOverlay) navOverlay.classList.toggle('active');
+        document.body.style.overflow = navMenu.classList.contains('active') ? 'hidden' : '';
+    }
+    
+    function closeMenu() {
+        navToggle.classList.remove('active');
+        navMenu.classList.remove('active');
+        if (navOverlay) navOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    
+    navToggle.addEventListener('click', toggleMenu);
+    if (navOverlay) navOverlay.addEventListener('click', closeMenu);
+    
+    // Close menu when clicking a link
+    navMenu.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', closeMenu);
+    });
+    
+    // Close menu on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && navMenu.classList.contains('active')) {
+            closeMenu();
+        }
+    });
+}
+
+// Initialize nav menu
+initNavMenu();
+
 // Console easter egg
 console.log(`
 %c██╗  ██╗███████╗██╗     ██╗         ██╗███╗   ██╗ ██████╗
@@ -119,3 +160,4 @@ Employee Handbook Section 2.1: Debugging in Hell voids your warranty.
 'color: #ff4444',
 'color: #00ffff; font-style: italic;'
 );
+

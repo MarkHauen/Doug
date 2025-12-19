@@ -18,15 +18,8 @@ CHAPTERS_DIR = BASE_DIR / "chapters"
 FULL_TXT = CHAPTERS_DIR / "full.txt"
 INDEX_FILE = BASE_DIR / "index.html"
 
-# Chapter metadata - add new chapters here
-CHAPTER_META = {
-    1: {"title": "The Arrival", "description": "Doug's mundane morning commute takes an unexpected turn into the depths of Hell Inc."},
-    2: {"title": "The Situation", "description": "A bureaucratic nightmare unfolds as Hell's HR department discovers a critical filing error."},
-    3: {"title": "The Confrence Call", "description": "Floor managers convene as Doug awaits his fate."},
-    4: {"title": "The First Meeting", "description": "Doug settles into his temporary accommodations, and has a one-on-one with his new boss."},
-    5: {"title": "TBD", "description": "The story continues..."},
-    6: {"title": "TBD", "description": "The story continues..."},
-}
+# Chapter metadata is now parsed from full.txt tags
+# Format: <Chapter NUMBER;TITLE;DESCRIPTION>
 
 # Special tag replacements
 SCENE_BREAK_HTML = '<div class="scene-break">◆ ◆ ◆</div>'
@@ -43,15 +36,21 @@ GNOTE_HTML = '''<div class="gnote-container">
 </div>'''
 
 
-def get_chapter_html_template(chapter_num: int, title: str, content_html: str, total_chapters: int) -> str:
+def get_chapter_html_template(chapter_num: int, title: str, content_html: str, total_chapters: int, all_meta: dict) -> str:
     """Generate the full HTML page for a chapter."""
     
-    # Build navigation links
-    nav_links = ['<li><a href="../index.html">HOME</a></li>']
+    # Build navigation menu links
+    nav_links = [
+        '<div class="nav-section">Navigation</div>',
+        '<li><a href="../index.html">HOME</a></li>'
+    ]
+    nav_links.append('<div class="nav-section">Chapters</div>')
     for i in range(1, total_chapters + 1):
         active = ' class="active"' if i == chapter_num else ''
-        nav_links.append(f'<li><a href="chapter{i}.html"{active}>CHAPTER {i}</a></li>')
-    nav_html = '\n            '.join(nav_links)
+        chapter_title = all_meta.get(i, {}).get("title", f"Chapter {i}")
+        nav_links.append(f'<li><a href="chapter{i}.html"{active}>CH {i}: {chapter_title}</a></li>')
+    
+    nav_html = '\n                '.join(nav_links)
     
     # Previous/Next navigation
     if chapter_num == 1:
@@ -88,13 +87,22 @@ def get_chapter_html_template(chapter_num: int, title: str, content_html: str, t
 <body>
     <div class="scanlines"></div>
     <div class="noise"></div>
+    <div class="nav-overlay"></div>
     
     <nav class="navbar">
-        <div class="nav-brand glitch" data-text="DOUG">DOUG</div>
+        <a href="../index.html" class="nav-brand glitch" data-text="DOUG">DOUG</a>
+        <div class="nav-toggle">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </nav>
+
+    <div class="nav-menu">
         <ul class="nav-links">
             {nav_html}
         </ul>
-    </nav>
+    </div>
 
     <main class="chapter-page">
         <header class="chapter-header">
@@ -182,8 +190,11 @@ def process_line(line: str) -> str | None:
     return f'                <p>{line}</p>'
 
 
-def parse_full_txt() -> dict[int, list[str]]:
-    """Parse full.txt and return dict of chapter_num -> list of lines."""
+def parse_full_txt() -> tuple[dict[int, list[str]], dict[int, dict]]:
+    """Parse full.txt and return (chapters content, chapter metadata).
+    
+    Chapter tags format: <Chapter NUMBER;TITLE;DESCRIPTION>
+    """
     
     if not FULL_TXT.exists():
         raise FileNotFoundError(f"Could not find {FULL_TXT}")
@@ -193,6 +204,7 @@ def parse_full_txt() -> dict[int, list[str]]:
     
     # Split by chapter markers
     chapters = {}
+    metadata = {}
     current_chapter = 0
     current_lines = []
     
@@ -201,14 +213,30 @@ def parse_full_txt() -> dict[int, list[str]]:
         if not line:
             continue
             
-        # Check for chapter marker
-        match = re.match(r'^<Chapter\s+(\d+)>$', line, re.IGNORECASE)
+        # Check for chapter marker with metadata: <Chapter NUM;TITLE;DESCRIPTION>
+        match = re.match(r'^<Chapter\s+(\d+);([^;]+);([^>]+)>$', line, re.IGNORECASE)
         if match:
             # Save previous chapter if exists
             if current_chapter > 0 and current_lines:
                 chapters[current_chapter] = current_lines
             
             current_chapter = int(match.group(1))
+            metadata[current_chapter] = {
+                "title": match.group(2).strip(),
+                "description": match.group(3).strip()
+            }
+            current_lines = []
+        # Also support legacy format: <Chapter NUM>
+        elif re.match(r'^<Chapter\s+(\d+)>$', line, re.IGNORECASE):
+            legacy_match = re.match(r'^<Chapter\s+(\d+)>$', line, re.IGNORECASE)
+            if current_chapter > 0 and current_lines:
+                chapters[current_chapter] = current_lines
+            
+            current_chapter = int(legacy_match.group(1))
+            metadata[current_chapter] = {
+                "title": f"Chapter {current_chapter}",
+                "description": "The story continues..."
+            }
             current_lines = []
         else:
             current_lines.append(line)
@@ -217,7 +245,7 @@ def parse_full_txt() -> dict[int, list[str]]:
     if current_chapter > 0 and current_lines:
         chapters[current_chapter] = current_lines
     
-    return chapters
+    return chapters, metadata
 
 
 def count_words(lines: list[str]) -> int:
@@ -238,13 +266,13 @@ def estimate_read_time(word_count: int, wpm: int = 200) -> str:
     return f"~{minutes} min read"
 
 
-def process_chapter(chapter_num: int, lines: list[str], total_chapters: int) -> int:
+def process_chapter(chapter_num: int, lines: list[str], total_chapters: int, all_meta: dict) -> int:
     """Process a single chapter into HTML. Returns word count."""
     
     html_path = CHAPTERS_DIR / f"chapter{chapter_num}.html"
     
     # Get chapter metadata
-    meta = CHAPTER_META.get(chapter_num, {"title": f"Chapter {chapter_num}", "description": "..."})
+    meta = all_meta.get(chapter_num, {"title": f"Chapter {chapter_num}", "description": "..."})
     title = meta["title"]
     
     # Count words for read time estimate
@@ -258,7 +286,7 @@ def process_chapter(chapter_num: int, lines: list[str], total_chapters: int) -> 
             html_parts.append(processed)
     
     content_html = '\n\n'.join(html_parts)
-    full_html = get_chapter_html_template(chapter_num, title, content_html, total_chapters)
+    full_html = get_chapter_html_template(chapter_num, title, content_html, total_chapters, all_meta)
     
     # Write HTML file
     with open(html_path, 'w', encoding='utf-8') as f:
@@ -269,7 +297,7 @@ def process_chapter(chapter_num: int, lines: list[str], total_chapters: int) -> 
     return word_count
 
 
-def update_index_nav(chapter_nums: list[int], word_counts: dict[int, int]):
+def update_index_nav(chapter_nums: list[int], word_counts: dict[int, int], all_meta: dict):
     """Update the index.html navigation and chapter cards."""
     
     if not INDEX_FILE.exists():
@@ -279,22 +307,28 @@ def update_index_nav(chapter_nums: list[int], word_counts: dict[int, int]):
     with open(INDEX_FILE, 'r', encoding='utf-8') as f:
         index_content = f.read()
     
-    # Build new nav links
-    nav_links = ['<li><a href="index.html" class="active">HOME</a></li>']
+    # Build new nav menu links (hamburger menu format)
+    nav_links = [
+        '<div class="nav-section">Navigation</div>',
+        '<li><a href="index.html" class="active">HOME</a></li>',
+        '<li><a href="about.html">ABOUT</a></li>',
+        '<div class="nav-section">Chapters</div>'
+    ]
     for num in chapter_nums:
-        nav_links.append(f'<li><a href="chapters/chapter{num}.html">CHAPTER {num}</a></li>')
+        chapter_title = all_meta.get(num, {}).get("title", f"Chapter {num}")
+        nav_links.append(f'<li><a href="chapters/chapter{num}.html">CH {num}: {chapter_title}</a></li>')
     
     new_nav = '\n            '.join(nav_links)
     
-    # Replace nav links section
-    nav_pattern = r'(<ul class="nav-links">)\s*.*?\s*(</ul>)'
+    # Replace nav links section (inside nav-menu div)
+    nav_pattern = r'(<ul class="nav-links">)\s*.*?\s*(</ul>\s*</div>)'
     new_nav_section = f'\\1\n            {new_nav}\n        \\2'
     index_content = re.sub(nav_pattern, new_nav_section, index_content, flags=re.DOTALL)
     
     # Build chapter cards
     cards_html = []
     for num in chapter_nums:
-        meta = CHAPTER_META.get(num, {"title": f"Chapter {num}", "description": "..."})
+        meta = all_meta.get(num, {"title": f"Chapter {num}", "description": "..."})
         read_time = estimate_read_time(word_counts.get(num, 0))
         cards_html.append(f'''<a href="chapters/chapter{num}.html" class="chapter-card">
                 <div class="chapter-number">{num:02d}</div>
@@ -352,14 +386,14 @@ def main():
     print("\n🔥 DOUG HTMLizer v2 - Converting stories to hellish HTML\n")
     
     try:
-        chapters = parse_full_txt()
+        chapters, metadata = parse_full_txt()
     except FileNotFoundError as e:
         print(f"  ✗ {e}")
         return 1
     
     if not chapters:
         print("  ✗ No chapters found in full.txt")
-        print("    Expected format: <Chapter 1> followed by paragraph lines")
+        print("    Expected format: <Chapter 1;Title;Description> followed by paragraph lines")
         return 1
     
     chapter_nums = sorted(chapters.keys())
@@ -371,15 +405,15 @@ def main():
         if args.chapter not in chapters:
             print(f"  ✗ Chapter {args.chapter} not found in full.txt")
             return 1
-        word_counts[args.chapter] = process_chapter(args.chapter, chapters[args.chapter], len(chapter_nums))
+        word_counts[args.chapter] = process_chapter(args.chapter, chapters[args.chapter], len(chapter_nums), metadata)
     else:
         for num in chapter_nums:
-            word_counts[num] = process_chapter(num, chapters[num], len(chapter_nums))
+            word_counts[num] = process_chapter(num, chapters[num], len(chapter_nums), metadata)
     
     # Update index
     if not args.chapter:
         print()
-        update_index_nav(chapter_nums, word_counts)
+        update_index_nav(chapter_nums, word_counts, metadata)
     
     print("\n✨ Done! Your souls are ready for deployment.\n")
     return 0
