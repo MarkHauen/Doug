@@ -113,7 +113,27 @@ def get_chapter_html_template(chapter_num: int, title: str, content_html: str, t
         </header>
 
         <article class="chapter-content">
-            <div class="story-text">
+            <div class="reading-settings">
+                <div class="setting-group">
+                    <span class="setting-label">Font:</span>
+                    <div class="setting-options">
+                        <button class="setting-btn active" data-font="serif" title="Elegant Serif">Aa</button>
+                        <button class="setting-btn" data-font="sans" title="Clean Sans">Aa</button>
+                        <button class="setting-btn" data-font="mono" title="Monospace">Aa</button>
+                        <button class="setting-btn" data-font="modern" title="Classic Serif">Aa</button>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <span class="setting-label">Size:</span>
+                    <div class="setting-options">
+                        <button class="setting-btn" data-size="small" title="Small">S</button>
+                        <button class="setting-btn active" data-size="medium" title="Medium">M</button>
+                        <button class="setting-btn" data-size="large" title="Large">L</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="story-text font-serif size-medium">
 {content_html}
             </div>
         </article>

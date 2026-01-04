@@ -709,6 +709,128 @@ body {
     padding: 3rem 2rem;
 }
 
+/* ===== READING SETTINGS BAR ===== */
+.reading-settings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--smoke);
+    border-radius: 4px;
+}
+
+.setting-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.setting-label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.setting-options {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.setting-btn {
+    padding: 0.4rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--smoke);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.setting-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+.setting-btn.active {
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    background: rgba(0, 255, 255, 0.1);
+}
+
+.setting-btn[data-font] {
+    min-width: 2.5rem;
+}
+
+.setting-btn[data-font="serif"] {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.setting-btn[data-font="sans"] {
+    font-family: 'Rajdhani', Arial, sans-serif;
+}
+
+.setting-btn[data-font="mono"] {
+    font-family: 'Share Tech Mono', monospace;
+}
+
+.setting-btn[data-font="modern"] {
+    font-family: Georgia, 'Times New Roman', serif;
+}
+
+/* Font family classes for story text */
+.story-text.font-serif {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.story-text.font-sans {
+    font-family: 'Rajdhani', Arial, sans-serif;
+}
+
+.story-text.font-mono {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.95em;
+}
+
+.story-text.font-modern {
+    font-family: Georgia, 'Times New Roman', serif;
+}
+
+/* Font size classes */
+.story-text.size-small {
+    font-size: 1rem;
+    line-height: 1.8;
+}
+
+.story-text.size-medium {
+    font-size: 1.1rem;
+    line-height: 1.9;
+}
+
+.story-text.size-large {
+    font-size: 1.25rem;
+    line-height: 2;
+}
+
+/* Responsive settings bar */
+@media (max-width: 600px) {
+    .reading-settings {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .setting-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
 .story-text {
     font-size: 1.1rem;
     line-height: 1.9;

@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Smooth scroll for anchor links
     initSmoothScroll();
+    
+    // Reading settings (font/size)
+    initReadingSettings();
 });
 
 // Typing effect
@@ -139,6 +142,63 @@ function initNavMenu() {
 
 // Initialize nav menu
 initNavMenu();
+
+// Reading settings (font family and size)
+function initReadingSettings() {
+    const storyText = document.querySelector('.story-text');
+    const settingsContainer = document.querySelector('.reading-settings');
+    
+    if (!storyText || !settingsContainer) return;
+    
+    // Load saved preferences
+    const savedFont = localStorage.getItem('doug-reading-font') || 'serif';
+    const savedSize = localStorage.getItem('doug-reading-size') || 'medium';
+    
+    // Apply saved preferences
+    applyFont(savedFont);
+    applySize(savedSize);
+    
+    // Set active buttons
+    updateActiveButtons('font', savedFont);
+    updateActiveButtons('size', savedSize);
+    
+    // Font buttons
+    settingsContainer.querySelectorAll('.setting-btn[data-font]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const font = btn.dataset.font;
+            applyFont(font);
+            updateActiveButtons('font', font);
+            localStorage.setItem('doug-reading-font', font);
+        });
+    });
+    
+    // Size buttons
+    settingsContainer.querySelectorAll('.setting-btn[data-size]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const size = btn.dataset.size;
+            applySize(size);
+            updateActiveButtons('size', size);
+            localStorage.setItem('doug-reading-size', size);
+        });
+    });
+    
+    function applyFont(font) {
+        storyText.classList.remove('font-serif', 'font-sans', 'font-mono', 'font-modern');
+        storyText.classList.add(`font-${font}`);
+    }
+    
+    function applySize(size) {
+        storyText.classList.remove('size-small', 'size-medium', 'size-large');
+        storyText.classList.add(`size-${size}`);
+    }
+    
+    function updateActiveButtons(type, value) {
+        const attr = type === 'font' ? 'data-font' : 'data-size';
+        settingsContainer.querySelectorAll(`.setting-btn[${attr}]`).forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute(attr) === value);
+        });
+    }
+}
 
 // Console easter egg
 console.log(`
