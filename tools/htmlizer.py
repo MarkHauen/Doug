@@ -375,7 +375,7 @@ def update_index_nav(chapter_nums: list[int], word_counts: dict[int, int], all_m
     with open(INDEX_FILE, 'w', encoding='utf-8') as f:
         f.write(index_content)
     
-    print(f"  ✓ Updated index.html with {len(chapter_nums)} chapters")
+    print(f"  ✓ Updated index.html with {len(chapter_nums)} chapters, a total of {sum(word_counts.values())} words.")
 
 
 def main():
