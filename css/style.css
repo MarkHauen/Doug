@@ -769,52 +769,52 @@ body {
 }
 
 .setting-btn[data-font="serif"] {
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: 'Cormorant Garamond', Georgia, serif !important;
 }
 
 .setting-btn[data-font="sans"] {
-    font-family: 'Rajdhani', Arial, sans-serif;
+    font-family: 'Rajdhani', Arial, sans-serif !important;
 }
 
 .setting-btn[data-font="mono"] {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Share Tech Mono', monospace !important;
 }
 
 .setting-btn[data-font="modern"] {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: Georgia, 'Times New Roman', serif !important;
 }
 
 /* Font family classes for story text */
 .story-text.font-serif {
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: 'Cormorant Garamond', Georgia, serif !important;
 }
 
 .story-text.font-sans {
-    font-family: 'Rajdhani', Arial, sans-serif;
+    font-family: 'Rajdhani', Arial, sans-serif !important;
 }
 
 .story-text.font-mono {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Share Tech Mono', monospace !important;
     font-size: 0.95em;
 }
 
 .story-text.font-modern {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: Georgia, 'Times New Roman', serif !important;
 }
 
 /* Font size classes */
 .story-text.size-small {
-    font-size: 1rem;
+    font-size: 1rem !important;
     line-height: 1.8;
 }
 
 .story-text.size-medium {
-    font-size: 1.1rem;
+    font-size: 1.1rem !important;
     line-height: 1.9;
 }
 
 .story-text.size-large {
-    font-size: 1.25rem;
+    font-size: 1.25rem !important;
     line-height: 2;
 }
 

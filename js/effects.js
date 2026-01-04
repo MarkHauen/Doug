@@ -143,6 +143,9 @@ function initNavMenu() {
 // Initialize nav menu
 initNavMenu();
 
+// Initialize reading settings
+initReadingSettings();
+
 // Reading settings (font family and size)
 function initReadingSettings() {
     const storyText = document.querySelector('.story-text');
