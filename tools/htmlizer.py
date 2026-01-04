@@ -6,6 +6,8 @@ Converts full.txt to styled HTML chapter pages for the Doug website.
 Usage:
     python htmlizer.py                    # Process all chapters from full.txt
     python htmlizer.py --chapter 1        # Process specific chapter only
+    python htmlizer.py --final            # Process all chapters and mark story as complete
+                                          # (removes "Coming Soon" card from index)
 """
 
 import re
@@ -297,8 +299,15 @@ def process_chapter(chapter_num: int, lines: list[str], total_chapters: int, all
     return word_count
 
 
-def update_index_nav(chapter_nums: list[int], word_counts: dict[int, int], all_meta: dict):
-    """Update the index.html navigation and chapter cards."""
+def update_index_nav(chapter_nums: list[int], word_counts: dict[int, int], all_meta: dict, is_final: bool = False):
+    """Update the index.html navigation and chapter cards.
+    
+    Args:
+        chapter_nums: List of chapter numbers
+        word_counts: Dict mapping chapter number to word count
+        all_meta: Dict of chapter metadata
+        is_final: If True, omit the "Coming Soon" card (story is complete)
+    """
     
     if not INDEX_FILE.exists():
         print("  ✗ index.html not found, skipping nav update")
@@ -343,9 +352,10 @@ def update_index_nav(chapter_nums: list[int], word_counts: dict[int, int], all_m
                 <div class="card-decoration"></div>
             </a>''')
     
-    # Add "coming soon" card
-    next_chapter = max(chapter_nums) + 1 if chapter_nums else 1
-    cards_html.append(f'''<div class="chapter-card locked">
+    # Add "coming soon" card (unless story is marked as final)
+    if not is_final:
+        next_chapter = max(chapter_nums) + 1 if chapter_nums else 1
+        cards_html.append(f'''<div class="chapter-card locked">
                 <div class="chapter-number">{next_chapter:02d}</div>
                 <div class="chapter-info">
                     <h3>Coming Soon</h3>
@@ -381,6 +391,7 @@ def update_index_nav(chapter_nums: list[int], word_counts: dict[int, int], all_m
 def main():
     parser = argparse.ArgumentParser(description='Convert Doug story full.txt to HTML chapters')
     parser.add_argument('--chapter', '-c', type=int, help='Process only this chapter number')
+    parser.add_argument('--final', '-f', action='store_true', help='Mark story as complete (removes "Coming Soon" card)')
     args = parser.parse_args()
     
     print("\n🔥 DOUG HTMLizer v2 - Converting stories to hellish HTML\n")
@@ -413,7 +424,7 @@ def main():
     # Update index
     if not args.chapter:
         print()
-        update_index_nav(chapter_nums, word_counts, metadata)
+        update_index_nav(chapter_nums, word_counts, metadata, is_final=args.final)
     
     print("\n✨ Done! Your souls are ready for deployment.\n")
     return 0
